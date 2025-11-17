@@ -19,6 +19,20 @@ import pytz
 import requests
 import yaml
 
+# 清除代理环境变量，避免代理问题导致网络请求失败
+os.environ.pop('HTTP_PROXY', None)
+os.environ.pop('HTTPS_PROXY', None)
+os.environ.pop('http_proxy', None)
+os.environ.pop('https_proxy', None)
+
+# AI 搜索模块（可选）
+try:
+    from ai_search import search_pension_news_with_ai
+    AI_SEARCH_AVAILABLE = True
+except ImportError:
+    AI_SEARCH_AVAILABLE = False
+    print("[警告] AI 搜索模块未安装，AI 智能搜索功能将不可用")
+
 
 VERSION = "3.0.5"
 
@@ -129,6 +143,16 @@ def load_config():
             "HOTNESS_WEIGHT": config_data["weight"]["hotness_weight"],
         },
         "PLATFORMS": config_data["platforms"],
+        # AI 搜索配置
+        "AI_SEARCH": {
+            "ENABLED": config_data.get("ai_search", {}).get("enabled", False),
+            "TRIGGER_THRESHOLD": config_data.get("ai_search", {}).get("trigger_threshold", 3),
+            "SEARCH_KEYWORDS": config_data.get("ai_search", {}).get("search_keywords", []),
+            "TIME_RANGE_HOURS": config_data.get("ai_search", {}).get("time_range_hours", 24),
+            "MAX_RESULTS": config_data.get("ai_search", {}).get("max_results", 15),
+            "GEMINI_MODEL": config_data.get("ai_search", {}).get("gemini_model", "gemini-1.5-flash"),
+            "RELEVANCE_THRESHOLD": config_data.get("ai_search", {}).get("relevance_threshold", 5),
+        },
     }
 
     # 通知渠道配置（环境变量优先）
@@ -178,6 +202,15 @@ def load_config():
     config["NTFY_TOKEN"] = os.environ.get("NTFY_TOKEN", "").strip() or webhooks.get(
         "ntfy_token", ""
     )
+
+    # AI 搜索 API Keys 配置（环境变量优先，更安全）
+    ai_search_data = config_data.get("ai_search", {})
+    config["AI_SEARCH"]["SERPER_API_KEY"] = os.environ.get(
+        "SERPER_API_KEY", ""
+    ).strip() or ai_search_data.get("serper_api_key", "")
+    config["AI_SEARCH"]["GEMINI_API_KEY"] = os.environ.get(
+        "GEMINI_API_KEY", ""
+    ).strip() or ai_search_data.get("gemini_api_key", "")
 
     # 输出配置来源信息
     notification_sources = []
@@ -436,6 +469,9 @@ class DataFetcher:
 
     def __init__(self, proxy_url: Optional[str] = None):
         self.proxy_url = proxy_url
+        # 创建一个 Session 对象，禁用环境变量代理
+        self.session = requests.Session()
+        self.session.trust_env = False  # 完全禁用环境变量的代理读取
 
     def fetch_data(
         self,
@@ -468,7 +504,7 @@ class DataFetcher:
         retries = 0
         while retries <= max_retries:
             try:
-                response = requests.get(
+                response = self.session.get(
                     url, proxies=proxies, headers=headers, timeout=10
                 )
                 response.raise_for_status()
@@ -2137,7 +2173,7 @@ def render_html_content(
     if report_data["failed_ids"]:
         html += """
                 <div class="error-section">
-                    <div class="error-title">⚠️ 请求失败的平台</div>
+                    <div class="error-title">[警告] 请求失败的平台</div>
                     <ul class="error-list">"""
         for id_value in report_data["failed_ids"]:
             html += f'<li class="error-item">{html_escape(id_value)}</li>'
@@ -2716,7 +2752,7 @@ def render_feishu_content(
         if text_content and "暂无匹配" not in text_content:
             text_content += f"\n{CONFIG['FEISHU_MESSAGE_SEPARATOR']}\n\n"
 
-        text_content += "⚠️ **数据获取失败的平台：**\n\n"
+        text_content += "[警告] **数据获取失败的平台：**\n\n"
         for i, id_value in enumerate(report_data["failed_ids"], 1):
             text_content += f"  • <font color='red'>{id_value}</font>\n"
 
@@ -2812,7 +2848,7 @@ def render_dingtalk_content(
         if text_content and "暂无匹配" not in text_content:
             text_content += f"\n---\n\n"
 
-        text_content += "⚠️ **数据获取失败的平台：**\n\n"
+        text_content += "[警告] **数据获取失败的平台：**\n\n"
         for i, id_value in enumerate(report_data["failed_ids"], 1):
             text_content += f"  • **{id_value}**\n"
 
@@ -3240,15 +3276,15 @@ def split_content_into_batches(
     if report_data["failed_ids"]:
         failed_header = ""
         if format_type == "wework":
-            failed_header = f"\n\n\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n\n\n\n[警告] **数据获取失败的平台：**\n\n"
         elif format_type == "telegram":
-            failed_header = f"\n\n⚠️ 数据获取失败的平台：\n\n"
+            failed_header = f"\n\n[警告] 数据获取失败的平台：\n\n"
         elif format_type == "ntfy":
-            failed_header = f"\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n\n[警告] **数据获取失败的平台：**\n\n"
         elif format_type == "feishu":
-            failed_header = f"\n{CONFIG['FEISHU_MESSAGE_SEPARATOR']}\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n{CONFIG['FEISHU_MESSAGE_SEPARATOR']}\n\n[警告] **数据获取失败的平台：**\n\n"
         elif format_type == "dingtalk":
-            failed_header = f"\n---\n\n⚠️ **数据获取失败的平台：**\n\n"
+            failed_header = f"\n---\n\n[警告] **数据获取失败的平台：**\n\n"
 
         test_content = current_batch + failed_header
         if (
@@ -4195,6 +4231,112 @@ class NewsAnalyzer:
                 }
         return title_info
 
+    def _supplement_with_ai_search(
+        self,
+        stats: List[Dict],
+        data_source: Dict,
+        title_info: Dict,
+        new_titles: Dict,
+        word_groups: List[Dict],
+        filter_words: List[str],
+        id_to_name: Dict,
+        mode: str
+    ) -> Tuple[Dict, Dict, Dict]:
+        """
+        使用 AI 搜索补充数据（当热搜结果不足时）
+        
+        Args:
+            stats: 当前统计结果
+            data_source: 数据源
+            title_info: 标题信息
+            new_titles: 新标题
+            word_groups: 词组
+            filter_words: 过滤词
+            id_to_name: ID到名称的映射
+            mode: 模式
+            
+        Returns:
+            更新后的 (data_source, title_info, new_titles)
+        """
+        # 检查是否启用 AI 搜索
+        if not CONFIG["AI_SEARCH"]["ENABLED"]:
+            return data_source, title_info, new_titles
+        
+        if not AI_SEARCH_AVAILABLE:
+            return data_source, title_info, new_titles
+        
+        # 统计当前匹配的新闻数量
+        total_matched = sum(stat["count"] for stat in stats)
+        threshold = CONFIG["AI_SEARCH"]["TRIGGER_THRESHOLD"]
+        
+        # 判断是否需要触发 AI 搜索
+        if total_matched >= threshold:
+            return data_source, title_info, new_titles
+        
+        print(f"\n[警告] 热搜筛选结果仅 {total_matched} 条，少于阈值 {threshold} 条")
+        print("[AI] 触发 AI 智能搜索补充养老资讯...")
+        
+        try:
+            # 调用 AI 搜索
+            ai_results = search_pension_news_with_ai(CONFIG)
+            
+            if not ai_results:
+                print("[警告] AI 搜索未返回结果")
+                return data_source, title_info, new_titles
+            
+            # 合并 AI 搜索结果到数据源
+            time_info = format_time_filename()
+            
+            # 创建 AI 搜索的数据结构
+            ai_search_data = {}
+            for item in ai_results:
+                title = clean_title(item.get("title", ""))
+                if not title:
+                    continue
+                
+                ai_search_data[title] = {
+                    "ranks": [],
+                    "url": item.get("url", ""),
+                    "mobileUrl": item.get("mobileUrl", ""),
+                }
+            
+            # 添加到数据源
+            if "ai_search" not in data_source:
+                data_source["ai_search"] = {}
+            data_source["ai_search"].update(ai_search_data)
+            
+            # 更新 title_info
+            if "ai_search" not in title_info:
+                title_info["ai_search"] = {}
+            
+            for title, data in ai_search_data.items():
+                title_info["ai_search"][title] = {
+                    "first_time": time_info,
+                    "last_time": time_info,
+                    "count": 1,
+                    "ranks": [],
+                    "url": data["url"],
+                    "mobileUrl": data["mobileUrl"],
+                }
+            
+            # 更新 id_to_name（添加 AI 搜索平台）
+            if "ai_search" not in id_to_name:
+                id_to_name["ai_search"] = "AI智能搜索"
+            
+            # 标记 AI 搜索的结果为新增（可选）
+            if mode in ["incremental", "current"]:
+                if "ai_search" not in new_titles:
+                    new_titles["ai_search"] = {}
+                new_titles["ai_search"].update(ai_search_data)
+            
+            print(f"[成功] AI 搜索补充了 {len(ai_search_data)} 条养老资讯")
+            
+            return data_source, title_info, new_titles
+            
+        except Exception as e:
+            print(f"[错误] AI 搜索补充失败: {e}")
+            return data_source, title_info, new_titles
+
     def _run_analysis_pipeline(
         self,
         data_source: Dict,
@@ -4207,7 +4349,7 @@ class NewsAnalyzer:
         failed_ids: Optional[List] = None,
         is_daily_summary: bool = False,
     ) -> Tuple[List[Dict], str]:
-        """统一的分析流水线：数据处理 → 统计计算 → HTML生成"""
+        """统一的分析流水线：数据处理 → 统计计算 → AI搜索补充 → HTML生成"""
 
         # 统计计算
         stats, total_titles = count_word_frequency(
@@ -4220,6 +4362,33 @@ class NewsAnalyzer:
             new_titles,
             mode=mode,
         )
+
+        # AI 智能搜索补充（当结果不足时触发）
+        data_source, title_info, new_titles = self._supplement_with_ai_search(
+            stats,
+            data_source,
+            title_info,
+            new_titles,
+            word_groups,
+            filter_words,
+            id_to_name,
+            mode
+        )
+
+        # 如果 AI 搜索补充了数据，重新统计
+        if CONFIG["AI_SEARCH"]["ENABLED"] and AI_SEARCH_AVAILABLE:
+            # 检查是否有 AI 搜索的数据
+            if "ai_search" in data_source:
+                stats, total_titles = count_word_frequency(
+                    data_source,
+                    word_groups,
+                    filter_words,
+                    id_to_name,
+                    title_info,
+                    self.rank_threshold,
+                    new_titles,
+                    mode=mode,
+                )
 
         # HTML生成
         html_file = generate_html_report(
@@ -4266,7 +4435,7 @@ class NewsAnalyzer:
             )
             return True
         elif CONFIG["ENABLE_NOTIFICATION"] and not has_notification:
-            print("⚠️ 警告：通知功能已启用但未配置任何通知渠道，将跳过通知发送")
+            print("[警告] 警告：通知功能已启用但未配置任何通知渠道，将跳过通知发送")
         elif not CONFIG["ENABLE_NOTIFICATION"]:
             print(f"跳过{report_type}通知：通知功能已禁用")
         elif (
@@ -4460,7 +4629,7 @@ class NewsAnalyzer:
                         html_file_path=html_file,
                     )
             else:
-                print("❌ 严重错误：无法读取刚保存的数据文件")
+                print("[错误] 严重错误：无法读取刚保存的数据文件")
                 raise RuntimeError("数据一致性检查失败：保存后立即读取失败")
         else:
             title_info = self._prepare_current_title_info(results, time_info)
@@ -4540,13 +4709,13 @@ def main():
         analyzer = NewsAnalyzer()
         analyzer.run()
     except FileNotFoundError as e:
-        print(f"❌ 配置文件错误: {e}")
+        print(f"[错误] 配置文件错误: {e}")
         print("\n请确保以下文件存在:")
         print("  • config/config.yaml")
         print("  • config/frequency_words.txt")
         print("\n参考项目文档进行正确配置")
     except Exception as e:
-        print(f"❌ 程序运行错误: {e}")
+        print(f"[错误] 程序运行错误: {e}")
         raise
 
 
