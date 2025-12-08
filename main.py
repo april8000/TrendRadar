@@ -5624,33 +5624,35 @@ def run_subscription_mode(sub_manager):
     print(f"   AI启用数: {stats['ai_enabled_count']}")
     print()
     
-    # 使用默认的NewsAnalyzer获取新闻数据（一次性爬取）
-    print("="*80)
+    # 使用默认的 NewsAnalyzer 获取新闻数据（一次性爬取）
+    print("=" * 80)
     print("🕷️  阶段1: 爬取新闻数据")
-    print("="*80 + "\n")
-    
+    print("=" * 80 + "\n")
+
     try:
         analyzer = NewsAnalyzer()
-        # 执行爬虫获取原始数据，但不推送
-        analyzer.data_source = analyzer._fetch_hot_search()
+        # 仅执行爬虫获取原始数据，不走原有推送流程
+        results, id_to_name, failed_ids = analyzer._crawl_data()
+
         all_news_data = []
-        
-        # 将数据源转换为新闻列表
-        for platform_id, news_items in analyzer.data_source.items():
-            for title, data in news_items.items():
+
+        # 将数据源转换为新闻列表，方便后续按订阅关键词筛选
+        for platform_id, title_data in results.items():
+            platform_name = id_to_name.get(platform_id, platform_id)
+            for title, data in title_data.items():
                 news_info = {
                     "title": title,
                     "platform_id": platform_id,
-                    "platform": data.get("platform", "未知"),
-                    "rank": data.get("rank", 0),
+                    "platform": platform_name,
+                    "rank": min(data.get("ranks", [0])) if data.get("ranks") else 0,
                     "url": data.get("url", ""),
                     "mobileUrl": data.get("mobileUrl", ""),
-                    "ranks": data.get("ranks", [])
+                    "ranks": data.get("ranks", []),
                 }
                 all_news_data.append(news_info)
-        
+
         print(f"✅ 共获取 {len(all_news_data)} 条新闻\n")
-        
+
     except Exception as e:
         print(f"❌ 爬取新闻数据失败: {e}")
         return 1
