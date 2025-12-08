@@ -33,6 +33,14 @@ except ImportError:
     AI_SEARCH_AVAILABLE = False
     print("[警告] AI 搜索模块未安装，AI 智能搜索功能将不可用")
 
+# 订阅管理模块（多订阅模式）
+try:
+    from subscription_manager import SubscriptionManager
+    SUBSCRIPTION_MANAGER_AVAILABLE = True
+except ImportError:
+    SUBSCRIPTION_MANAGER_AVAILABLE = False
+    print("[警告] 订阅管理模块未安装，多订阅模式将不可用")
+
 
 VERSION = "3.5.0"
 
@@ -5581,20 +5589,291 @@ class NewsAnalyzer:
             raise
 
 
-def main():
+def run_subscription_mode(sub_manager):
+    """
+    多订阅模式执行
+    
+    Args:
+        sub_manager: 订阅管理器实例
+        
+    Returns:
+        执行状态码（0=成功，1=失败）
+    """
+    print("\n" + "="*80)
+    print("  TrendRadar - 多订阅模式")
+    print("="*80 + "\n")
+    
+    # 验证配置
+    if not sub_manager.validate_config():
+        print("❌ 订阅配置验证失败，请检查 config/subscriptions.json")
+        return 1
+    
+    # 获取活跃订阅
+    active_subs = sub_manager.get_active_subscriptions()
+    
+    if not active_subs:
+        print("⚠️ 没有启用的订阅，程序退出")
+        return 0
+    
+    # 显示统计信息
+    stats = sub_manager.get_statistics()
+    print(f"📊 订阅统计:")
+    print(f"   总订阅数: {stats['total_subscriptions']}")
+    print(f"   活跃订阅: {stats['active_subscriptions']}")
+    print(f"   总Webhook: {stats['total_webhooks']}")
+    print(f"   AI启用数: {stats['ai_enabled_count']}")
+    print()
+    
+    # 使用默认的NewsAnalyzer获取新闻数据（一次性爬取）
+    print("="*80)
+    print("🕷️  阶段1: 爬取新闻数据")
+    print("="*80 + "\n")
+    
     try:
         analyzer = NewsAnalyzer()
+        # 执行爬虫获取原始数据，但不推送
+        analyzer.data_source = analyzer._fetch_hot_search()
+        all_news_data = []
+        
+        # 将数据源转换为新闻列表
+        for platform_id, news_items in analyzer.data_source.items():
+            for title, data in news_items.items():
+                news_info = {
+                    "title": title,
+                    "platform_id": platform_id,
+                    "platform": data.get("platform", "未知"),
+                    "rank": data.get("rank", 0),
+                    "url": data.get("url", ""),
+                    "mobileUrl": data.get("mobileUrl", ""),
+                    "ranks": data.get("ranks", [])
+                }
+                all_news_data.append(news_info)
+        
+        print(f"✅ 共获取 {len(all_news_data)} 条新闻\n")
+        
+    except Exception as e:
+        print(f"❌ 爬取新闻数据失败: {e}")
+        return 1
+    
+    # 处理每个订阅
+    print("="*80)
+    print("📋 阶段2: 处理各订阅分组")
+    print("="*80 + "\n")
+    
+    success_count = 0
+    fail_count = 0
+    
+    for idx, subscription in enumerate(active_subs, 1):
+        sub_name = subscription.get("name", f"订阅{idx}")
+        sub_id = subscription.get("id", f"sub_{idx}")
+        
+        print(f"\n{'─'*80}")
+        print(f"[{idx}/{len(active_subs)}] 处理订阅: {sub_name}")
+        print(f"ID: {sub_id}")
+        print(f"{'─'*80}")
+        
+        try:
+            # 筛选匹配的新闻
+            matched_news = sub_manager.match_news_for_subscription(
+                subscription, all_news_data
+            )
+            
+            # AI搜索补充（如果需要）
+            if AI_SEARCH_AVAILABLE and sub_manager.should_enable_ai_search(
+                subscription, len(matched_news)
+            ):
+                ai_config = sub_manager.get_ai_search_config(subscription)
+                try:
+                    # 构建临时AI配置
+                    temp_config = {
+                        "AI_SEARCH": {
+                            "ENABLED": True,
+                            "SEARCH_KEYWORDS": ai_config.get("search_keywords", []),
+                            "TIME_RANGE_HOURS": ai_config.get("time_range_hours", 24),
+                            "MAX_RESULTS": ai_config.get("max_results", 15),
+                            "SERPER_API_KEY": CONFIG.get("AI_SEARCH", {}).get("SERPER_API_KEY"),
+                            "GEMINI_API_KEY": CONFIG.get("AI_SEARCH", {}).get("GEMINI_API_KEY"),
+                            "GEMINI_MODEL": "gemini-1.5-flash",
+                            "RELEVANCE_THRESHOLD": 5
+                        }
+                    }
+                    
+                    ai_news = search_pension_news_with_ai(temp_config)
+                    
+                    if ai_news:
+                        # 转换AI新闻格式
+                        for ai_item in ai_news:
+                            matched_news.append({
+                                "title": ai_item.get("title", ""),
+                                "platform": ai_item.get("source", "AI智能搜索"),
+                                "platform_id": "ai_search",
+                                "rank": 0,
+                                "url": ai_item.get("url", ""),
+                                "mobileUrl": ai_item.get("mobileUrl", ""),
+                                "ranks": []
+                            })
+                        print(f"   🤖 AI搜索补充了 {len(ai_news)} 条新闻")
+                        
+                except Exception as e:
+                    print(f"   ⚠️ AI搜索失败: {e}")
+            
+            if not matched_news:
+                print(f"   ⚠️ 没有匹配的新闻，跳过推送")
+                continue
+            
+            # 生成报告
+            report_content = generate_subscription_report(subscription, matched_news)
+            
+            # 推送到所有配置的webhook
+            webhooks = sub_manager.get_webhooks(subscription)
+            
+            if not webhooks:
+                print(f"   ⚠️ 没有配置webhook，跳过推送")
+                continue
+            
+            print(f"\n   📤 开始推送到 {len(webhooks)} 个webhook...")
+            
+            push_success = 0
+            push_fail = 0
+            
+            for webhook in webhooks:
+                webhook_name = webhook.get("name", "未命名群组")
+                webhook_url = webhook.get("url")
+                webhook_type = webhook.get("type", "wework")
+                
+                try:
+                    # 发送推送
+                    if webhook_type == "wework":
+                        send_wework_message(webhook_url, report_content)
+                    elif webhook_type == "feishu":
+                        send_feishu_message(webhook_url, report_content)
+                    elif webhook_type == "dingtalk":
+                        send_dingtalk_message(webhook_url, report_content)
+                    else:
+                        print(f"      ⚠️ 不支持的webhook类型: {webhook_type}")
+                        push_fail += 1
+                        continue
+                    
+                    print(f"      ✅ {webhook_name}")
+                    push_success += 1
+                    
+                except Exception as e:
+                    print(f"      ❌ {webhook_name}: {str(e)[:50]}")
+                    push_fail += 1
+            
+            if push_success > 0:
+                print(f"\n   ✅ 订阅 [{sub_name}] 完成 ({push_success} 成功, {push_fail} 失败)")
+                success_count += 1
+            else:
+                print(f"\n   ❌ 订阅 [{sub_name}] 全部推送失败")
+                fail_count += 1
+                
+        except Exception as e:
+            print(f"\n   ❌ 订阅 [{sub_name}] 处理失败: {e}")
+            import traceback
+            traceback.print_exc()
+            fail_count += 1
+            continue
+    
+    # 总结
+    print(f"\n{'='*80}")
+    print(f"🎉 执行完成!")
+    print(f"   成功: {success_count} 个订阅")
+    print(f"   失败: {fail_count} 个订阅")
+    print(f"{'='*80}\n")
+    
+    return 0 if fail_count == 0 else 1
+
+
+def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> str:
+    """
+    为订阅生成报告内容
+    
+    Args:
+        subscription: 订阅配置
+        news_data: 新闻数据列表
+        
+    Returns:
+        报告内容（Markdown格式）
+    """
+    sub_name = subscription.get("name", "订阅推送")
+    keywords = subscription.get("keywords", {})
+    
+    # 构建报告
+    report = []
+    report.append(f"# 📰 {sub_name}\n\n")
+    report.append(f"🕒 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    report.append(f"📊 共 {len(news_data)} 条匹配新闻\n")
+    
+    # 关键词信息
+    normal_kws = keywords.get("normal", [])
+    if normal_kws:
+        kw_str = ', '.join(normal_kws[:5])
+        if len(normal_kws) > 5:
+            kw_str += f" 等{len(normal_kws)}个关键词"
+        report.append(f"🔑 关键词: {kw_str}\n")
+    
+    report.append("\n---\n\n")
+    
+    # 新闻列表
+    for idx, news in enumerate(news_data[:50], 1):  # 最多显示50条
+        title = news.get("title", "无标题")
+        platform = news.get("platform", "未知平台")
+        rank = news.get("rank", 0)
+        url = news.get("url", "")
+        
+        # 格式化排名
+        if rank > 0:
+            rank_str = f"[{rank}]"
+        else:
+            rank_str = ""
+        
+        report.append(f"{idx}. **[{platform}]** {title} {rank_str}\n")
+        
+        if url:
+            report.append(f"   🔗 {url}\n")
+        
+        report.append("\n")
+    
+    if len(news_data) > 50:
+        report.append(f"... 还有 {len(news_data) - 50} 条新闻未显示\n")
+    
+    return "".join(report)
+
+
+def main():
+    """主函数 - 支持多订阅模式和默认模式"""
+    try:
+        # 检查是否有订阅配置
+        if SUBSCRIPTION_MANAGER_AVAILABLE and os.path.exists("config/subscriptions.json"):
+            print("[信息] 检测到订阅配置文件，启动多订阅模式")
+            sub_manager = SubscriptionManager("config/subscriptions.json")
+            
+            if sub_manager.has_subscriptions():
+                return run_subscription_mode(sub_manager)
+            else:
+                print("[警告] 订阅配置为空，切换到默认模式")
+        
+        # 默认模式（保持原有逻辑）
+        print("[信息] 使用默认单一配置模式")
+        analyzer = NewsAnalyzer()
         analyzer.run()
+        return 0
+        
     except FileNotFoundError as e:
         print(f"[错误] 配置文件错误: {e}")
         print("\n请确保以下文件存在:")
         print("  • config/config.yaml")
         print("  • config/frequency_words.txt")
+        print("  • config/subscriptions.json (可选，用于多订阅模式)")
         print("\n参考项目文档进行正确配置")
+        return 1
     except Exception as e:
         print(f"[错误] 程序运行错误: {e}")
-        raise
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())

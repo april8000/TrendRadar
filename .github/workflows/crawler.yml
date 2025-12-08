@@ -1,9 +1,9 @@
-name: Hot News Crawler
+name: Hot News Crawler (Multi-Subscription)
 
 on:
   schedule:
     # 我们使用的是 github 官方提供的资源来进行的推送，而每个账号的资源是限额的，为了不被官方判定为滥用而面临封号的风险，不建议比半小时更低
-    - cron: "0 1 * * *" # 0 * * * *每小时整点运行一次(实际有偏差) 或者 "*/30 * * * *" (每半小时执行一次) 或者 "*/30 0-14 * * *"(每天早上 8 点到晚上 10 点期间，每半小时运行一次)
+    - cron: "0 */2 * * *" # 每2小时执行一次，支持多订阅模式
   workflow_dispatch:
 
 # 添加权限设置
@@ -42,6 +42,13 @@ jobs:
             echo "❌ 错误: config/frequency_words.txt 文件不存在"
             echo "请参考项目文档创建频率词配置文件"
             exit 1
+          fi
+          
+          # 检查订阅配置（多订阅模式，可选）
+          if [ -f config/subscriptions.json ]; then
+            echo "✅ 检测到订阅配置文件，将使用多订阅模式"
+          else
+            echo "⚠️ 未检测到 subscriptions.json，将使用默认单一配置模式"
           fi
 
           echo "✅ 配置文件检查通过"
