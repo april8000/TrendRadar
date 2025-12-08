@@ -1,0 +1,101 @@
+app:
+  version_check_url: "https://raw.githubusercontent.com/sansan0/TrendRadar/refs/heads/master/version"
+  show_version_update: true # 控制显示版本更新提示，如果 false，则不接受新版本提示
+
+crawler:
+  request_interval: 1000 # 请求间隔(毫秒)
+  enable_crawler: true # 是否启用爬取新闻功能，如果 false，则直接停止程序
+  use_proxy: false # 是否启用代理，false 时为关闭
+  default_proxy: "http://127.0.0.1:10086"
+
+# 推送模式选择
+report:
+  mode: "daily" # 可选: "daily"|"incremental"|"current"
+  rank_threshold: 5 # 排名高亮阈值
+  sort_by_position_first: false # 排序优先级：true=先按配置位置排序，false=先按热点条数排序
+  max_news_per_keyword: 0 # 每个关键词最大显示数量，0=不限制
+  reverse_content_order: false # 内容顺序：false=热点词汇统计在前，true=新增热点新闻在前
+
+notification:
+  enable_notification: true # 是否启用通知功能，如果 false，则不发送手机通知
+  message_batch_size: 4000 # 消息分批大小（字节）
+  dingtalk_batch_size: 20000
+  feishu_batch_size: 30000
+  bark_batch_size: 4000
+  slack_batch_size: 4000
+  batch_send_interval: 3
+  feishu_message_separator: "━━━━━━━━━━━━━━━━━━━"
+  max_accounts_per_channel: 3
+  push_window:
+    enabled: false
+    time_range:
+      start: "20:00"
+      end: "22:00"
+    once_per_day: true
+    push_record_retention_days: 7
+  webhooks:
+    feishu_url: ""
+    dingtalk_url: ""
+    wework_url: ""
+    wework_msg_type: "markdown"
+    telegram_bot_token: ""
+    telegram_chat_id: ""
+    email_from: ""
+    email_password: ""
+    email_to: ""
+    email_smtp_server: ""
+    email_smtp_port: ""
+    ntfy_server_url: "https://ntfy.sh"
+    ntfy_topic: ""
+    ntfy_token: ""
+    bark_url: ""
+    slack_webhook_url: ""
+
+weight:
+  rank_weight: 0.6
+  frequency_weight: 0.3
+  hotness_weight: 0.1
+
+ai_search:
+  enabled: true
+  trigger_threshold: 3
+  serper_api_key: ""
+  gemini_api_key: ""
+  search_keywords:
+    - "养老保险政策"
+    - "养老金调整"
+    - "商业养老保险"
+    - "个人养老金"
+    - "养老服务"
+    - "养老改革"
+    - "退休金上调"
+    - "养老体系"
+  time_range_hours: 24
+  max_results: 15
+  gemini_model: "gemini-1.5-flash"
+  relevance_threshold: 5
+
+platforms:
+  - id: "toutiao"
+    name: "今日头条"
+  - id: "baidu"
+    name: "百度热搜"
+  - id: "wallstreetcn-hot"
+    name: "华尔街见闻"
+  - id: "thepaper"
+    name: "澎湃新闻"
+  - id: "bilibili-hot-search"
+    name: "bilibili 热搜"
+  - id: "cls-hot"
+    name: "财联社热门"
+  - id: "ifeng"
+    name: "凤凰网"
+  - id: "tieba"
+    name: "贴吧"
+  - id: "weibo"
+    name: "微博"
+  - id: "douyin"
+    name: "抖音"
+  - id: "zhihu"
+    name: "知乎"
+

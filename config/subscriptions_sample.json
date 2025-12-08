@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "subscriptions": [
+    {
+      "id": "sub_example_001",
+      "name": "示例订阅",
+      "enabled": true,
+      "keywords": {
+        "normal": [
+          "关键词1",
+          "关键词2"
+        ],
+        "required": [],
+        "excluded": [
+          "广告"
+        ],
+        "limit": 10
+      },
+      "webhooks": [
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=your-key",
+          "name": "测试群组"
+        }
+      ],
+      "ai_search": {
+        "enabled": false,
+        "trigger_threshold": 3
+      },
+      "schedule": {
+        "enabled": true,
+        "cron": "0 * * * *"
+      }
+    }
+  ],
+  "global_settings": {
+    "report_mode": "incremental",
+    "platforms": [
+      "zhihu",
+      "weibo",
+      "douyin"
+    ],
+    "weight": {
+      "rank_weight": 0.6,
+      "frequency_weight": 0.3,
+      "hotness_weight": 0.1
+    }
+  }
+}

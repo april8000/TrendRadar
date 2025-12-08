@@ -1,0 +1,93 @@
+{
+    "version": "1.0",
+    "description": "TrendRadar多订阅配置文件",
+    "subscriptions": [
+      {
+        "id": "sub_pension_custom",
+        "name": "养老资讯订阅",
+        "enabled": true,
+        "keywords": {
+          "normal": [
+            "银发经济", "养老", "中老年", "适老化", "银发族",
+            "智慧养老", "康养社区", "医养结合", "适老改造",
+            "老年消费", "养老院", "老龄化", "养老服务",
+            "养老金", "长护险"
+          ],
+          "required": [],
+          "excluded": [],
+          "limit": 0
+        },
+        "webhooks": [
+          {
+            "type": "wework",
+            "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=4b07a9e6-68a2-4713-b72d-f358e5857115",
+            "name": "养老资讯群"
+          }
+        ],
+        "ai_search": {
+          "enabled": true,
+          "trigger_threshold": 3,
+          "search_keywords": [
+            "养老保险政策", "养老金调整", "智慧养老", "医养结合"
+          ],
+          "time_range_hours": 24,
+          "max_results": 15
+        },
+        "schedule": {
+          "enabled": true,
+          "cron": "0 */2 * * *",
+          "timezone": "Asia/Shanghai"
+        }
+      },
+      {
+        "id": "sub_pet_medical",
+        "name": "宠物医疗订阅",
+        "enabled": true,
+        "keywords": {
+          "normal": [
+            "宠物医疗责任险", "兽医职业责任险", "宠物诊疗过失险", "宠物医院风险转移",
+            "宠物用药安全险", "宠物服务综合责任险", "上门服务意外险",
+            "遛狗员责任险", "上门喂养责任险", "宠物美容洗护意外险",
+            "宠物运输承运人责任险", "宠物寄宿责任险", "宠物训练意外险",
+            "宠物医疗保险", "宠物第三者责任险", "宠物意外伤害险",
+            "宠物身故保险", "宠物慢性病管理保险", "宠物遗传病保险",
+            "宠物牙科保险", "宠物老年病保险", "宠物癌症保险",
+            "宠物疫苗保障", "宠物在线问诊", "宠物视频医生",
+            "宠物急诊直付", "宠物健康档案", "宠物定期体检",
+            "宠物疫苗接种", "宠物驱虫管理", "宠物慢性病监测",
+            "宠物康复护理", "宠物临终关怀", "兽医", "动物医院"
+          ],
+          "required": [],
+          "excluded": [],
+          "limit": 0
+        },
+        "webhooks": [
+          {
+            "type": "wework",
+            "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=4b07a9e6-68a2-4713-b72d-f358e5857115",
+            "name": "宠物医疗群"
+          }
+        ],
+        "ai_search": {
+          "enabled": true,
+          "trigger_threshold": 3,
+          "search_keywords": [
+            "宠物医疗责任险", "宠物保险", "宠物医院", "兽医"
+          ],
+          "time_range_hours": 24,
+          "max_results": 15
+        },
+        "schedule": {
+          "enabled": true,
+          "cron": "0 */2 * * *",
+          "timezone": "Asia/Shanghai"
+        }
+      }
+    ],
+    "global_settings": {
+      "report_mode": "incremental",
+      "platforms": ["zhihu", "weibo", "douyin", "toutiao", "baidu", "bilibili"],
+      "weight": { "rank_weight": 0.6, "frequency_weight": 0.3, "hotness_weight": 0.1 },
+      "push_window": { "enabled": false }
+    }
+  }

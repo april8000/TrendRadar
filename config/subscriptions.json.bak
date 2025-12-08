@@ -1,0 +1,213 @@
+{
+  "version": "1.0",
+  "description": "TrendRadar多订阅配置文件",
+  "last_updated": "2025-12-08",
+  
+  "subscriptions": [
+    {
+      "id": "sub_pension_001",
+      "name": "养老资讯订阅",
+      "description": "养老保险、养老金政策相关资讯",
+      "enabled": true,
+      "keywords": {
+        "normal": [
+          "养老保险",
+          "养老金",
+          "个人养老金",
+          "养老体系",
+          "养老服务"
+        ],
+        "required": [
+          "政策",
+          "调整"
+        ],
+        "excluded": [
+          "广告",
+          "推广",
+          "培训",
+          "销售"
+        ],
+        "limit": 10
+      },
+      "webhooks": [
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=养老政策研究群KEY",
+          "name": "养老政策研究群"
+        },
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=养老资讯推送群KEY",
+          "name": "养老资讯推送群"
+        }
+      ],
+      "ai_search": {
+        "enabled": true,
+        "trigger_threshold": 3,
+        "search_keywords": [
+          "养老保险政策",
+          "养老金调整",
+          "个人养老金",
+          "养老改革"
+        ],
+        "time_range_hours": 24,
+        "max_results": 15
+      },
+      "schedule": {
+        "enabled": true,
+        "cron": "0 */2 * * *",
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    
+    {
+      "id": "sub_ai_tech_002",
+      "name": "AI科技订阅",
+      "description": "人工智能、ChatGPT、Claude等AI技术资讯",
+      "enabled": true,
+      "keywords": {
+        "normal": [
+          "人工智能",
+          "AI",
+          "ChatGPT",
+          "Claude",
+          "Gemini",
+          "GPT-4",
+          "大模型"
+        ],
+        "required": [],
+        "excluded": [
+          "广告",
+          "招聘"
+        ],
+        "limit": 20
+      },
+      "webhooks": [
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=AI技术交流群KEY",
+          "name": "AI技术交流群"
+        }
+      ],
+      "ai_search": {
+        "enabled": false
+      },
+      "schedule": {
+        "enabled": true,
+        "cron": "0 * * * *"
+      }
+    },
+    
+    {
+      "id": "sub_ev_car_003",
+      "name": "新能源汽车订阅",
+      "description": "特斯拉、比亚迪、小米汽车等新能源车资讯",
+      "enabled": true,
+      "keywords": {
+        "normal": [
+          "特斯拉",
+          "比亚迪",
+          "小米汽车",
+          "理想汽车",
+          "蔚来汽车",
+          "问界"
+        ],
+        "required": [
+          "发布",
+          "销量",
+          "技术",
+          "新车"
+        ],
+        "excluded": [
+          "股价",
+          "股票",
+          "涨跌"
+        ],
+        "limit": 15
+      },
+      "webhooks": [
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=汽车爱好者群KEY",
+          "name": "汽车爱好者群"
+        },
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=新能源车主群KEY",
+          "name": "新能源车主群"
+        },
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=汽车行业研究群KEY",
+          "name": "汽车行业研究群"
+        }
+      ],
+      "ai_search": {
+        "enabled": true,
+        "trigger_threshold": 5,
+        "search_keywords": [
+          "特斯拉新闻",
+          "比亚迪发布",
+          "小米汽车"
+        ],
+        "time_range_hours": 12,
+        "max_results": 10
+      },
+      "schedule": {
+        "enabled": true,
+        "cron": "0 9,12,18 * * *"
+      }
+    },
+    
+    {
+      "id": "sub_disabled_example_004",
+      "name": "已禁用的示例订阅",
+      "description": "这是一个已禁用的订阅示例",
+      "enabled": false,
+      "keywords": {
+        "normal": ["示例关键词"],
+        "required": [],
+        "excluded": [],
+        "limit": 0
+      },
+      "webhooks": [
+        {
+          "type": "wework",
+          "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=示例KEY",
+          "name": "示例群组"
+        }
+      ],
+      "ai_search": {
+        "enabled": false
+      },
+      "schedule": {
+        "enabled": false
+      }
+    }
+  ],
+  
+  "global_settings": {
+    "report_mode": "incremental",
+    "platforms": [
+      "zhihu",
+      "weibo",
+      "douyin",
+      "toutiao",
+      "baidu",
+      "bilibili"
+    ],
+    "weight": {
+      "rank_weight": 0.6,
+      "frequency_weight": 0.3,
+      "hotness_weight": 0.1
+    },
+    "push_window": {
+      "enabled": false,
+      "time_range": {
+        "start": "09:00",
+        "end": "22:00"
+      }
+    }
+  }
+}
+
