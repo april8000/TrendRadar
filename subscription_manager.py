@@ -207,23 +207,24 @@ class SubscriptionManager:
             subscription: 订阅配置
             
         Returns:
-            AI搜索配置字典
+            AI搜索配置字典，包含主关键字和备用关键字
         """
         ai_config = subscription.get("ai_search", {})
         keywords = subscription.get("keywords", {})
         
-        # 如果有自定义搜索关键词，使用自定义的
-        search_keywords = ai_config.get("search_keywords")
-        if not search_keywords:
-            # 否则使用普通关键词
-            search_keywords = keywords.get("normal", [])
+        # 优先使用订阅的关键字（keywords.normal）作为主关键字
+        primary_keywords = keywords.get("normal", [])
+        
+        # 备用关键字：自定义搜索关键词（ai_search.search_keywords）
+        fallback_keywords = ai_config.get("search_keywords", [])
         
         return {
             "enabled": ai_config.get("enabled", False),
             "trigger_threshold": ai_config.get("trigger_threshold", 3),
-            "search_keywords": search_keywords,
+            "primary_keywords": primary_keywords,  # 主关键字（订阅关键字）
+            "fallback_keywords": fallback_keywords,  # 备用关键字（自定义关键字）
             "time_range_hours": ai_config.get("time_range_hours", 24),
-            "max_results": ai_config.get("max_results", 15)
+            "max_results": ai_config.get("max_results", 30)  # 默认30条
         }
     
     def get_global_settings(self) -> Dict:

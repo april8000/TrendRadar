@@ -39,10 +39,14 @@ class AISearchManager:
         self.serper_api_key = self.ai_config.get("SERPER_API_KEY", "")
         self.ai_api_key = self.ai_config.get("AI_API_KEY", "")
         
-        # 搜索配置
-        self.search_keywords = self.ai_config.get("SEARCH_KEYWORDS", [])
+        # 搜索配置（支持主关键字和备用关键字）
+        self.primary_keywords = self.ai_config.get("PRIMARY_KEYWORDS", [])
+        self.fallback_keywords = self.ai_config.get("FALLBACK_KEYWORDS", [])
+        # 兼容旧配置：如果没有主关键字，使用 SEARCH_KEYWORDS
+        if not self.primary_keywords:
+            self.primary_keywords = self.ai_config.get("SEARCH_KEYWORDS", [])
         self.time_range_hours = self.ai_config.get("TIME_RANGE_HOURS", 24)
-        self.max_results = self.ai_config.get("MAX_RESULTS", 15)
+        self.max_results = self.ai_config.get("MAX_RESULTS", 30)  # 默认30条
         self.relevance_threshold = self.ai_config.get("RELEVANCE_THRESHOLD", 5)
         
         # AI 模型配置（硅基流动）
@@ -60,8 +64,8 @@ class AISearchManager:
         if not self.ai_api_key:
             raise ValueError("未配置 AI_API_KEY，请在环境变量或配置文件中设置")
         
-        if not self.search_keywords:
-            raise ValueError("未配置搜索关键词 SEARCH_KEYWORDS")
+        if not self.primary_keywords and not self.fallback_keywords:
+            raise ValueError("未配置搜索关键词（PRIMARY_KEYWORDS 或 FALLBACK_KEYWORDS）")
     
     def search_and_filter(self) -> List[Dict]:
         """
@@ -104,22 +108,27 @@ class AISearchManager:
     
     def _search_with_serper(self) -> List[Dict]:
         """
-        使用 Serper API 搜索新闻
+        使用 Serper API 搜索新闻（多轮搜索策略）
+        
+        策略：
+        1. 优先使用主关键字（订阅关键字）搜索，目标获取30条结果
+        2. 如果结果不足（< 20条），使用备用关键字补充搜索
         
         Returns:
-            搜索结果列表
+            搜索结果列表（去重后）
         """
-        try:
-            # 构建搜索查询
-            query = " OR ".join(self.search_keywords)
-            
-            # API 请求参数
-            url = "https://google.serper.dev/news"
-            headers = {
-                "X-API-KEY": self.serper_api_key,
-                "Content-Type": "application/json"
-            }
-            
+        all_results = []
+        seen_urls = set()  # 用于去重
+        
+        # API 请求参数
+        url = "https://google.serper.dev/news"
+        headers = {
+            "X-API-KEY": self.serper_api_key,
+            "Content-Type": "application/json"
+        }
+        
+        def _perform_search(query: str, round_name: str) -> List[Dict]:
+            """执行单次搜索"""
             payload = {
                 "q": query,
                 "num": self.max_results,
@@ -128,7 +137,7 @@ class AISearchManager:
                 "tbs": f"qdr:d"  # 时间：过去一天
             }
             
-            print(f"[搜索] 正在搜索: {query}")
+            print(f"[搜索] {round_name}: {query}")
             print(f"   搜索范围: 过去 {self.time_range_hours} 小时")
             
             # 发送请求（添加重试机制）
@@ -163,7 +172,7 @@ class AISearchManager:
                     
                     else:
                         print(f"   [错误] Serper API 错误: {response.status_code}")
-                        print(f"   响应内容: {response.text}")
+                        print(f"   响应内容: {response.text[:200]}")
                         return []
                 
                 except requests.Timeout:
@@ -176,6 +185,39 @@ class AISearchManager:
                         return []
             
             return []
+        
+        try:
+            # 第一轮：使用主关键字搜索
+            if self.primary_keywords:
+                query = " OR ".join(self.primary_keywords)
+                primary_results = _perform_search(query, "第一轮搜索（主关键字）")
+                
+                # 去重并添加到结果列表
+                for news in primary_results:
+                    news_url = news.get("link", "")
+                    if news_url and news_url not in seen_urls:
+                        seen_urls.add(news_url)
+                        all_results.append(news)
+                
+                print(f"   [结果] 主关键字搜索获得 {len(primary_results)} 条，去重后 {len(all_results)} 条")
+            
+            # 第二轮：如果结果不足，使用备用关键字补充
+            if len(all_results) < 20 and self.fallback_keywords:
+                query = " OR ".join(self.fallback_keywords)
+                fallback_results = _perform_search(query, "第二轮搜索（备用关键字）")
+                
+                # 去重并添加到结果列表
+                added_count = 0
+                for news in fallback_results:
+                    news_url = news.get("link", "")
+                    if news_url and news_url not in seen_urls:
+                        seen_urls.add(news_url)
+                        all_results.append(news)
+                        added_count += 1
+                
+                print(f"   [结果] 备用关键字搜索获得 {len(fallback_results)} 条，新增 {added_count} 条")
+            
+            return all_results
             
         except Exception as e:
             print(f"[错误] Serper 搜索失败: {e}")
@@ -236,13 +278,33 @@ class AISearchManager:
                 }
                 news_summaries.append(summary)
             
+            # 构建订阅关键字信息（用于prompt）
+            keywords_info = ""
+            if self.primary_keywords:
+                keywords_info = f"订阅关键字: {', '.join(self.primary_keywords[:10])}"  # 只显示前10个
+            
             # 构建 Prompt
-            prompt = f"""你是一个资讯分析专家。请分析以下新闻列表，筛选出高质量的相关内容。
+            prompt = f"""你是一个专业的资讯分析专家。请分析以下新闻列表，筛选出与订阅主题强相关的高质量内容。
+
+**订阅主题关键字：**
+{keywords_info}
+
+**重点关注内容类型：**
+1. 政策相关：政策发布、政策调整、政策解读等
+2. 热点新闻：行业热点、重大事件、重要动态
+3. 热点话题：社会关注、讨论热点、趋势话题
+4. 医疗保险相关知识：保险产品、理赔案例、保障范围等
+5. 行业资讯和趋势：市场动态、发展趋势、行业分析
 
 **评分标准（0-10分）：**
-- 8-10分：高度相关，信息价值高，必须保留
+- 8-10分：与订阅主题强相关，涉及政策、热点、医疗保险、趋势等，信息价值高，必须保留
 - 5-7分：中度相关，有一定参考价值，可以保留
-- 0-4分：低相关或无关，过滤掉
+- 0-4分：低相关或无关（如仅提及关键字但内容不相关），必须过滤掉
+
+**重要原则：**
+- 只保留与订阅主题有强关联的新闻
+- 如果新闻只是简单提及关键字，但内容与主题无关，应给予低分（0-4分）并过滤
+- 优先保留政策、热点、医疗保险、趋势相关的内容
 
 **新闻列表：**
 {json.dumps(news_summaries, ensure_ascii=False, indent=2)}
@@ -254,12 +316,12 @@ class AISearchManager:
     {{
       "id": 0,
       "score": 8,
-      "reason": "关于政策调整的权威报道"
+      "reason": "关于养老保险政策调整的权威报道，与订阅主题强相关"
     }}
   ]
 }}
 
-只返回评分 >= {self.relevance_threshold} 的新闻。
+只返回评分 >= {self.relevance_threshold} 的新闻。请严格筛选，确保只保留真正相关的新闻。
 """
             
             print(f"[AI] 正在调用 {self.ai_model_name} 进行智能筛选...")

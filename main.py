@@ -5722,13 +5722,14 @@ def run_subscription_mode(sub_manager):
             ):
                 ai_config = sub_manager.get_ai_search_config(subscription)
                 try:
-                    # 构建临时AI配置
+                    # 构建临时AI配置（支持主关键字和备用关键字）
                     temp_config = {
                         "AI_SEARCH": {
                             "ENABLED": True,
-                            "SEARCH_KEYWORDS": ai_config.get("search_keywords", []),
+                            "PRIMARY_KEYWORDS": ai_config.get("primary_keywords", []),  # 主关键字（订阅关键字）
+                            "FALLBACK_KEYWORDS": ai_config.get("fallback_keywords", []),  # 备用关键字（自定义关键字）
                             "TIME_RANGE_HOURS": ai_config.get("time_range_hours", 24),
-                            "MAX_RESULTS": ai_config.get("max_results", 15),
+                            "MAX_RESULTS": ai_config.get("max_results", 30),  # 增加到30条
                             "SERPER_API_KEY": CONFIG.get("AI_SEARCH", {}).get("SERPER_API_KEY"),
                             "AI_API_KEY": CONFIG.get("AI_SEARCH", {}).get("AI_API_KEY"),
                             "AI_MODEL": CONFIG.get("AI_SEARCH", {}).get("AI_MODEL", "deepseek-ai/DeepSeek-V3"),
@@ -5894,8 +5895,6 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
     Returns:
         报告内容（Markdown格式）
     """
-    from collections import Counter
-    
     sub_name = subscription.get("name", "订阅推送")
     keywords = subscription.get("keywords", {})
     normal_kws = keywords.get("normal", [])
@@ -5907,35 +5906,10 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
     report.append(f"# {emoji} {sub_name}\n\n")
     report.append(f"**总新闻数：** {len(news_data)}\n\n\n\n")
     
-    # 统计热点词汇（从订阅的关键词中统计在新闻标题中的出现次数）
-    if normal_kws and news_data:
-        keyword_counts = Counter()
-        all_titles = " ".join([news.get("title", "") for news in news_data])
-        all_titles_lower = all_titles.lower()
-        
-        # 统计每个关键词在标题中的出现次数
-        for kw in normal_kws:
-            if kw:
-                count = all_titles_lower.count(kw.lower())
-                if count > 0:
-                    keyword_counts[kw] = count
-        
-        # 如果有统计结果，添加热点词汇统计部分
-        if keyword_counts:
-            report.append(f"📊 **热点词汇统计**\n\n")
-            
-            # 按出现次数排序，取前30个
-            sorted_keywords = sorted(keyword_counts.items(), key=lambda x: (-x[1], x[0]))[:30]
-            
-            # 格式化关键词列表（用逗号分隔）
-            keyword_list = []
-            for kw, count in sorted_keywords:
-                keyword_list.append(kw)
-            
-            # 显示关键词列表和总数
-            kw_str = ", ".join(keyword_list)
-            total_kw_count = sum(keyword_counts.values())
-            report.append(f"{kw_str} : {total_kw_count}条\n\n")
+    # 显示配置的关键字列表（简单列表格式）
+    if normal_kws:
+        kw_str = ", ".join(normal_kws)
+        report.append(f"**关键词：** {kw_str}\n\n")
     
     # 新闻列表（使用和之前一样的格式）
     for idx, news in enumerate(news_data[:50], 1):  # 最多显示50条

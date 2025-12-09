@@ -36,7 +36,7 @@
             "养老保险政策", "养老金调整", "智慧养老", "医养结合"
           ],
           "time_range_hours": 24,
-          "max_results": 15
+          "max_results": 30
         },
         "schedule": {
           "enabled": true,
@@ -85,7 +85,7 @@
             "宠物医疗责任险", "宠物保险", "宠物医院", "兽医"
           ],
           "time_range_hours": 24,
-          "max_results": 15
+          "max_results": 30
         },
         "schedule": {
           "enabled": true,
