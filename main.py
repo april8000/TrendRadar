@@ -5908,7 +5908,11 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
     
     # 显示配置的关键字列表（简单列表格式）
     if normal_kws:
-        kw_str = ", ".join(normal_kws)
+        # 仅展示前 8 个关键词，保持消息简洁
+        display_kws = normal_kws[:8]
+        kw_str = ", ".join(display_kws)
+        if len(normal_kws) > 8:
+            kw_str += f" ...（共 {len(normal_kws)} 个）"
         report.append(f"🔥 **关键词：** {kw_str}\n\n")
     
     # 新闻列表（使用和之前一样的格式）
