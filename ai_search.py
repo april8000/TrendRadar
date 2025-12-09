@@ -48,8 +48,8 @@ class AISearchManager:
         self.max_results = self.ai_config.get("MAX_RESULTS", 15)
         self.relevance_threshold = self.ai_config.get("RELEVANCE_THRESHOLD", 5)
         
-        # Gemini 配置
-        self.gemini_model_name = self.ai_config.get("GEMINI_MODEL", "gemini-1.5-flash")
+        # Gemini 配置（默认使用 gemini-pro，更稳定）
+        self.gemini_model_name = self.ai_config.get("GEMINI_MODEL", "gemini-pro")
         
         # 验证配置
         self._validate_config()
