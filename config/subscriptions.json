@@ -71,11 +71,6 @@
             "type": "wework",
             "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=20f1b0e4-18c8-4b8e-a9c5-f1caca3a269b",
             "name": "宠物医疗群"
-          },
-          {
-            "type": "wework",
-            "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=c4aa29d6-db3f-43c5-a974-af2067e2bd8d",
-            "name": "养老&c宠物资讯群"
           }
         ],
         "ai_search": {
@@ -83,6 +78,47 @@
           "trigger_threshold": 3,
           "search_keywords": [
             "宠物医疗责任险", "宠物保险", "宠物医院", "兽医"
+          ],
+          "time_range_hours": 24,
+          "max_results": 30
+        },
+        "schedule": {
+          "enabled": true,
+          "cron": "0 8 * * *",
+          "timezone": "Asia/Shanghai"
+        }
+      },
+      {
+        "id": "sub_ai_tech",
+        "name": "AI技术资讯订阅",
+        "enabled": true,
+        "keywords": {
+          "normal": [
+            "AI", "人工智能", "机器学习", "深度学习", "神经网络",
+            "大模型", "LLM", "GPT", "Claude", "Gemini", "文心一言",
+            "开源项目", "GitHub", "开源工具", "开源框架",
+            "AI前沿", "AI技术", "AI应用", "AI创新",
+            "Transformer", "BERT", "ChatGPT", "Copilot",
+            "AI开发", "AI编程", "AI算法", "AI研究",
+            "计算机视觉", "自然语言处理", "NLP", "CV",
+            "AI工具", "AI平台", "AI服务", "AI产品"
+          ],
+          "required": [],
+          "excluded": [],
+          "limit": 0
+        },
+        "webhooks": [
+            {
+                "type": "wework",
+                "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=c4aa29d6-db3f-43c5-a974-af2067e2bd8d",
+                "name": "养老&c宠物资讯群"
+            }
+        ],
+        "ai_search": {
+          "enabled": true,
+          "trigger_threshold": 3,
+          "search_keywords": [
+            "AI前沿技术", "AI开源项目", "人工智能最新进展", "机器学习开源"
           ],
           "time_range_hours": 24,
           "max_results": 30
