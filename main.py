@@ -5909,7 +5909,7 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
     # 显示配置的关键字列表（简单列表格式）
     if normal_kws:
         kw_str = ", ".join(normal_kws)
-        report.append(f"**关键词：** {kw_str}\n\n")
+        report.append(f"🔥 **关键词：** {kw_str}\n\n")
     
     # 新闻列表（使用和之前一样的格式）
     for idx, news in enumerate(news_data[:50], 1):  # 最多显示50条
