@@ -5625,6 +5625,45 @@ class NewsAnalyzer:
             raise
 
 
+def deduplicate_news_items(news_list):
+    """
+    对同一订阅内的新闻列表进行去重：
+    1. 优先按 URL 精确去重
+    2. 对没有 URL 或 URL 不同的新闻，再按归一化标题去重
+    仅作用于单次运行、单个订阅内的结果
+    """
+    if not news_list:
+        return news_list
+
+    seen_urls = set()
+    seen_titles = set()
+    deduped = []
+
+    for item in news_list:
+        url = (item.get("url") or "").strip()
+        title = (item.get("title") or "").strip()
+
+        # 第一步：按 URL 去重
+        if url:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+
+        # 第二步：按标题归一化去重（兜底）
+        normalized_title = title.lower()
+        # 去掉常见标点和空白，仅保留文字和数字，避免轻微符号差异导致重复
+        normalized_title = re.sub(r"[^\w\u4e00-\u9fff]+", "", normalized_title)
+
+        if normalized_title:
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
+
+        deduped.append(item)
+
+    return deduped
+
+
 def run_subscription_mode(sub_manager):
     """
     多订阅模式执行
@@ -5756,6 +5795,14 @@ def run_subscription_mode(sub_manager):
                         
                 except Exception as e:
                     print(f"   ⚠️ AI搜索失败: {e}")
+
+            # 订阅内去重：先按 URL，再按标题归一化
+            if matched_news:
+                before_count = len(matched_news)
+                matched_news = deduplicate_news_items(matched_news)
+                after_count = len(matched_news)
+                if after_count < before_count:
+                    print(f"   ℹ️ 去重后新闻数: {after_count}/{before_count}")
             
             if not matched_news:
                 print(f"   ⚠️ 没有匹配的新闻，跳过推送")
