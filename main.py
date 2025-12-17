@@ -5740,10 +5740,15 @@ def fetch_xhs_hot_posts(keyword: str, limit: int, xhs_config: Dict) -> List[Dict
     if posts:
         print(f"   [XHS] 接口成功返回并解析 {len(posts)} 条笔记")
         for i, p in enumerate(posts[:3], 1):
+            raw_item = p.get("raw", {})
+            raw_likes = raw_item.get("likes") if isinstance(raw_item, dict) else None
             print(
                 f"      - #{i} 标题: {p.get('title', '')[:40]}... "
-                f"(likes={p.get('likes')}, url={p.get('url', '')[:60]}...)"
+                f"(解析后likes={p.get('likes')}, 原始likes={raw_likes}, url={p.get('url', '')[:60]}...)"
             )
+            # 打印完整原始 item（仅前两条，避免日志过长）
+            if i <= 2:
+                print(f"         [原始item] {json.dumps(raw_item, ensure_ascii=False)[:200]}...")
 
     return posts
 
