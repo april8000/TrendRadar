@@ -5736,6 +5736,15 @@ def fetch_xhs_hot_posts(keyword: str, limit: int, xhs_config: Dict) -> List[Dict
             }
         )
 
+    # 调试输出：展示前若干条小红书原始数据，方便核对 likes 是否一致
+    if posts:
+        print(f"   [XHS] 接口成功返回并解析 {len(posts)} 条笔记")
+        for i, p in enumerate(posts[:3], 1):
+            print(
+                f\"      - #{i} 标题: {p.get('title', '')[:40]}... "
+                f"(likes={p.get('likes')}, url={p.get('url', '')[:60]}...)\"
+            )
+
     return posts
 
 
