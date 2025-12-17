@@ -159,7 +159,7 @@
           "timezone": "Asia/Shanghai"
         },
         "xhs": {
-          "enabled": true,
+          "enabled": false,
           "keywords": ["AI", "人工智能"],
           "limit": 20,
           "push_limit": 10,
@@ -210,7 +210,7 @@
           "timezone": "Asia/Shanghai"
         },
         "xhs": {
-          "enabled": true,
+          "enabled": false,
           "keywords": ["医美保险"],
           "limit": 20,
           "push_limit": 10,
