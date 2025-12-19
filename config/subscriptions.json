@@ -36,7 +36,7 @@
         ],
         "ai_search": {
           "enabled": true,
-          "trigger_threshold": 3,
+          "trigger_threshold": 5,
           "search_keywords": [
             "养老保险政策", "养老金调整", "智慧养老", "医养结合"
           ],
@@ -93,7 +93,7 @@
         ],
         "ai_search": {
           "enabled": true,
-          "trigger_threshold": 3,
+          "trigger_threshold": 5,
           "search_keywords": [
             "宠物", "宠物险", "宠物医疗", "宠物服务",
             "宠物疫苗", "宠物医疗投融资", "宠物医疗趋势", 
@@ -112,8 +112,8 @@
         "xhs": {
           "enabled": true,
           "keywords": ["宠物险", "宠物医疗"],
-          "limit": 3,
-          "push_limit": 3,
+          "limit": 5,
+          "push_limit": 5,
           "history_days": 15,
           "section_title": "小红书热帖（宠物医疗）"
         }
@@ -146,7 +146,7 @@
         ],
         "ai_search": {
           "enabled": true,
-          "trigger_threshold": 3,
+          "trigger_threshold": 5,
           "search_keywords": [
             "AI", "AI开源项目", "人工智能", "机器学习开源"
           ],
@@ -196,7 +196,7 @@
         ],
         "ai_search": {
           "enabled": true,
-          "trigger_threshold": 3,
+          "trigger_threshold": 5,
           "search_keywords": [
             "医美", "医美保险", "医美投诉", "轻医美",
             "赴韩医美", "医美保险"
