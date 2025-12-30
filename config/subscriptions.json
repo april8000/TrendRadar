@@ -223,6 +223,8 @@
       "report_mode": "incremental",
       "platforms": ["zhihu", "weibo", "douyin", "toutiao", "baidu", "bilibili"],
       "weight": { "rank_weight": 0.6, "frequency_weight": 0.3, "hotness_weight": 0.1 },
-      "push_window": { "enabled": false }
+      "push_window": { "enabled": false },
+      "wecom_push_mode": "summary_only",
+      "source_summary_thresholds": { "xhs": 2000 }
     }
   }

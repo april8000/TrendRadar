@@ -4242,6 +4242,121 @@ def strip_markdown(text: str) -> str:
     return text.strip()
 
 
+# === WeCom 消息处理工具函数 ===
+
+def truncateUtf8Bytes(text: str, max_bytes: int) -> str:
+    """
+    UTF-8 安全的字节截断函数
+
+    Args:
+        text: 要截断的文本
+        max_bytes: 最大字节数
+
+    Returns:
+        截断后的文本，包含省略号
+    """
+    if not text:
+        return text
+
+    # 获取 UTF-8 字节数组
+    buf = text.encode('utf-8')
+
+    if len(buf) <= max_bytes:
+        return text
+
+    # 找到合适的截断点（不破坏 UTF-8 字符）
+    truncated_buf = buf[:max_bytes]
+
+    # 从后往前找到完整的 UTF-8 字符
+    while len(truncated_buf) > 0:
+        try:
+            # 尝试解码
+            result = truncated_buf.decode('utf-8')
+            # 如果解码成功，说明是完整的 UTF-8 字符
+            return result.rstrip() + '...'
+        except UnicodeDecodeError:
+            # 移除最后一个不完整的字节
+            truncated_buf = truncated_buf[:-1]
+
+    return '...'
+
+
+def buildWeComMarkdown(title: str = "", summary: str = "", url: str = "") -> str:
+    """
+    构建企业微信 markdown 格式的消息
+
+    Args:
+        title: 标题
+        summary: 摘要内容
+        url: 原文链接
+
+    Returns:
+        格式化的 markdown 字符串
+    """
+    lines = []
+
+    if title:
+        lines.append(f"### {title}")
+
+    if summary:
+        lines.append("")
+        lines.append(summary)
+        lines.append("")
+
+    if url:
+        lines.append(f"原文: {url}")
+
+    return "\n".join(lines)
+
+
+def generateSummary(text: str, max_chars: int = 300) -> str:
+    """
+    生成文本摘要（简单截取前 N 个字符）
+
+    Args:
+        text: 原文
+        max_chars: 最大字符数
+
+    Returns:
+        摘要文本
+    """
+    if not text or len(text) <= max_chars:
+        return text
+
+    # 截取前 max_chars 个字符，并尝试在句子边界截断
+    summary = text[:max_chars]
+
+    # 尝试在句子结束处截断
+    sentence_endings = ['。', '！', '？', '；', '.', '!', '?', ';']
+    for ending in sentence_endings:
+        last_pos = summary.rfind(ending)
+        if last_pos > max_chars * 0.7:  # 至少保留 70% 的长度
+            summary = summary[:last_pos + 1]
+            break
+
+    return summary.rstrip() + ('...' if len(text) > len(summary) else '')
+
+
+def isFromXhs(news_item: Dict) -> bool:
+    """
+    判断新闻来源是否为小红书
+
+    Args:
+        news_item: 新闻数据字典
+
+    Returns:
+        是否来自小红书
+    """
+    # 检查可能的来源标识字段
+    source = news_item.get("platform", "").lower()
+    platform_id = news_item.get("platform_id", "").lower()
+
+    # 小红书的可能标识
+    xhs_keywords = ["xhs", "xiaohongshu", "小红书"]
+
+    return any(keyword in source or keyword in platform_id for keyword in xhs_keywords)
+
+
 def send_to_wework(
     webhook_url: str,
     report_data: Dict,
@@ -4313,9 +4428,16 @@ def send_to_wework(
                     if i < len(batches):
                         time.sleep(CONFIG["BATCH_SEND_INTERVAL"])
                 else:
-                    print(
-                        f"{log_prefix}第 {i}/{len(batches)} 批次发送失败 [{report_type}]，错误：{result.get('errmsg')}"
-                    )
+                    errcode = result.get("errcode")
+                    errmsg = result.get("errmsg", "未知错误")
+
+                    # 监控 WeCom 推送错误，特别是 4096 字节限制错误
+                    if errcode == 40058 and "exceed max length" in errmsg:
+                        print(f"[监控] {log_prefix}第 {i}/{len(batches)} 批次因消息过长失败 ({batch_size} bytes)")
+                        print(f"[建议] 检查 wecom_push_mode 配置或调整 source_summary_thresholds")
+                    else:
+                        print(f"{log_prefix}第 {i}/{len(batches)} 批次发送失败 [{report_type}]，错误：{errmsg}")
+
                     return False
             else:
                 print(
@@ -5816,25 +5938,74 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
         report.append(f"🔑 关键词: {kw_str}\n")
     
     report.append("\n---\n\n")
-    
+    # 辅助函数：UTF-8 字节长度与安全截断
+    def _utf8_len(s: Optional[str]) -> int:
+        if not s:
+            return 0
+        try:
+            return len(s.encode("utf-8"))
+        except Exception:
+            return len(s)
+
+    def _truncate_utf8(s: str, max_bytes: int) -> str:
+        if not s:
+            return ""
+        b = s.encode("utf-8")
+        if len(b) <= max_bytes:
+            return s
+        truncated = b[:max_bytes]
+        # 忽略不完整的多字节末尾，保证可解码
+        return truncated.decode("utf-8", "ignore").rstrip() + "..."
+
+    # 获取全局配置
+    global_settings = subscription.get("global_settings", {})
+    wecom_push_mode = subscription.get("wecom_push_mode") or global_settings.get("wecom_push_mode", "summary_only")
+    source_thresholds = subscription.get("source_summary_thresholds") or global_settings.get("source_summary_thresholds", {})
+
+    # 检查是否启用增强的 WeCom 消息处理
+    wecom_enhanced_enabled = CONFIG.get("WECOM_ENHANCED", {}).get("ENABLED", True)
+
     # 新闻列表
     for idx, news in enumerate(news_data[:50], 1):  # 最多显示50条
         title = news.get("title", "无标题")
         platform = news.get("platform", "未知平台")
         rank = news.get("rank", 0)
         url = news.get("url", "")
-        
+        # 尝试从新闻数据中获取内容字段，兼容不同来源字段名
+        content = news.get("content") or news.get("summary") or news.get("body") or ""
+
         # 格式化排名
         if rank > 0:
             rank_str = f"[{rank}]"
         else:
             rank_str = ""
-        
+
         report.append(f"{idx}. **[{platform}]** {title} {rank_str}\n")
-        
+
         if url:
             report.append(f"   🔗 {url}\n")
-        
+
+        # 按来源与阈值决定内容展示方式
+        if content:
+            if wecom_enhanced_enabled:
+                # 启用增强处理：按来源智能摘要
+                is_xhs = isFromXhs(news)
+                content_bytes = len(content.encode("utf-8"))
+                xhs_threshold = source_thresholds.get("xhs", 2000)
+
+                if is_xhs and content_bytes > xhs_threshold:
+                    # 小红书且内容过长：生成摘要
+                    summary = generateSummary(content, 300)  # 300字符摘要
+                    report.append(f"   {summary}\n")
+                    print(f"   📝 新闻 {idx} ({platform}): 小红书内容过长({content_bytes}字节)，使用摘要")
+                else:
+                    # 其他情况：展示全文（分段发送逻辑会在推送时处理超长问题）
+                    report.append(f"   {content}\n")
+                    print(f"   📝 新闻 {idx} ({platform}): 展示全文({content_bytes}字节)")
+            else:
+                # 传统模式：直接展示内容
+                report.append(f"   {content}\n")
+
         report.append("\n")
     
     if len(news_data) > 50:
@@ -5843,8 +6014,72 @@ def generate_subscription_report(subscription: Dict, news_data: List[Dict]) -> s
     return "".join(report)
 
 
+# === 测试函数 ===
+
+def test_utf8_truncation():
+    """测试 UTF-8 截断功能"""
+    print("\n=== 测试 UTF-8 截断功能 ===")
+
+    # 测试基本截断
+    text = "这是一段很长的中文文本，用于测试UTF-8截断功能是否正常工作。"
+    truncated = truncateUtf8Bytes(text, 50)
+    print(f"原文长度: {len(text.encode('utf-8'))} bytes")
+    print(f"截断后: {truncated}")
+    print(f"截断后长度: {len(truncated.encode('utf-8'))} bytes")
+
+    # 测试边界情况
+    short_text = "短文本"
+    truncated_short = truncateUtf8Bytes(short_text, 50)
+    print(f"短文本测试: '{truncated_short}'")
+
+    # 测试空字符串
+    empty = truncateUtf8Bytes("", 50)
+    print(f"空字符串测试: '{empty}'")
+
+
+def test_summary_generation():
+    """测试摘要生成功能"""
+    print("\n=== 测试摘要生成功能 ===")
+
+    long_text = "这是一段很长的文本内容，用于测试摘要生成功能。我们需要确保摘要能够在合适的长度内截断，并且保持文本的可读性。摘要应该尽量在句子边界结束，避免在单词中间截断。"
+    summary = generateSummary(long_text, 50)
+    print(f"原文长度: {len(long_text)} 字符")
+    print(f"摘要: {summary}")
+    print(f"摘要长度: {len(summary)} 字符")
+
+
+def test_source_detection():
+    """测试来源检测功能"""
+    print("\n=== 测试来源检测功能 ===")
+
+    # 测试小红书来源
+    xhs_news = {"platform": "小红书", "platform_id": "xhs"}
+    non_xhs_news = {"platform": "微博", "platform_id": "weibo"}
+
+    print(f"小红书新闻检测: {isFromXhs(xhs_news)}")
+    print(f"非小红书新闻检测: {isFromXhs(non_xhs_news)}")
+
+
+def run_tests():
+    """运行所有测试"""
+    print("开始运行 WeCom 消息处理功能测试...")
+
+    test_utf8_truncation()
+    test_summary_generation()
+    test_source_detection()
+
+    print("\n[OK] 所有测试完成")
+
+
 def main():
     """主函数 - 支持多订阅模式和默认模式"""
+    import sys
+
+    # 检查命令行参数，如果是测试模式则运行测试
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        run_tests()
+        return 0
+
     try:
         # 检查是否有订阅配置
         if SUBSCRIPTION_MANAGER_AVAILABLE and os.path.exists("config/subscriptions.json"):
