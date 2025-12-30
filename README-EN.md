@@ -1368,7 +1368,7 @@ frequency_words.txt file added **required word** feature, using + sign
    1. **View Generated URL**:
       - In "Webhook URLs for Your Workspace" section
       - You'll see the newly generated Webhook URL
-      - Format: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX`
+      - Format: `https://hooks.slack.com/services/YOUR_TEAM_ID/YOUR_CHANNEL_ID/YOUR_WEBHOOK_TOKEN`
 
    2. **Copy URL**:
       - Click **"Copy"** button on the right of URL
@@ -2603,7 +2603,7 @@ WEWORK_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx;http
 BARK_URL=https://api.day.app/key1;https://api.day.app/key2
 
 # Slack multi-account (2 channels)
-SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx;https://hooks.slack.com/yyy
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_TEAM_ID1/YOUR_CHANNEL_ID1/YOUR_WEBHOOK_TOKEN1;https://hooks.slack.com/services/YOUR_TEAM_ID2/YOUR_CHANNEL_ID2/YOUR_WEBHOOK_TOKEN2
 ```
 
 **Paired Configuration Examples (Telegram and ntfy)**:
@@ -2672,7 +2672,7 @@ WEWORK_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx;http
 BARK_URL=https://api.day.app/key1;https://api.day.app/key2
 
 # Slack multi-account (2 channels)
-SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx;https://hooks.slack.com/yyy
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_TEAM_ID1/YOUR_CHANNEL_ID1/YOUR_WEBHOOK_TOKEN1;https://hooks.slack.com/services/YOUR_TEAM_ID2/YOUR_CHANNEL_ID2/YOUR_WEBHOOK_TOKEN2
 ```
 
 **Paired Configuration Examples (Telegram and ntfy)**:

@@ -1405,7 +1405,7 @@ frequency_words.txt 文件增加了一个【必须词】功能，使用 + 号
    1. **查看生成的 URL**：
       - 在 "Webhook URLs for Your Workspace" 区域
       - 会看到刚刚生成的 Webhook URL
-      - 格式如：`https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX`
+      - 格式如：`https://hooks.slack.com/services/YOUR_TEAM_ID/YOUR_CHANNEL_ID/YOUR_WEBHOOK_TOKEN`
 
    2. **复制 URL**：
       - 点击 URL 右侧的 **"Copy"** 按钮
@@ -2627,7 +2627,7 @@ WEWORK_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx;http
 BARK_URL=https://api.day.app/key1;https://api.day.app/key2
 
 # Slack多账号（2个频道）
-SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx;https://hooks.slack.com/yyy
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_TEAM_ID1/YOUR_CHANNEL_ID1/YOUR_WEBHOOK_TOKEN1;https://hooks.slack.com/services/YOUR_TEAM_ID2/YOUR_CHANNEL_ID2/YOUR_WEBHOOK_TOKEN2
 ```
 
 **配对配置示例（Telegram 和 ntfy）**：
@@ -2696,7 +2696,7 @@ WEWORK_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx;http
 BARK_URL=https://api.day.app/key1;https://api.day.app/key2
 
 # Slack多账号（2个频道）
-SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx;https://hooks.slack.com/yyy
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_TEAM_ID1/YOUR_CHANNEL_ID1/YOUR_WEBHOOK_TOKEN1;https://hooks.slack.com/services/YOUR_TEAM_ID2/YOUR_CHANNEL_ID2/YOUR_WEBHOOK_TOKEN2
 ```
 
 **配对配置示例（Telegram 和 ntfy）**：
